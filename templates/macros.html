@@ -1,43 +1,50 @@
 {% macro icon(name, spacing="me-1") -%}
-  <i class="ti ti-{{ name }} {{ spacing }}"></i>
+  <i class="ti ti-{{ name }} {{ spacing }}" aria-hidden="true"></i>
 {%- endmacro %}
 
-{% macro toggle_button(attribute, value, active) -%}
-  <button type="button" class="btn btn-sm {{ 'btn-primary' if active else 'btn-outline-secondary' }}" data-{{ attribute }}="{{ value }}">{{ caller() }}</button>
+{% macro toggle_button(attribute, value, active, css="") -%}
+  <button type="button" class="seg-btn {{ css }} {{ 'active' if active }}" aria-pressed="{{ 'true' if active else 'false' }}" data-{{ attribute }}="{{ value }}">{{ caller() }}</button>
 {%- endmacro %}
 
-{% macro kpi_card(title, id, with_subtitle) %}
-  <div class="col-6 col-lg-3"><div class="card card-sm"><div class="card-body">
-    <div class="subheader">{{ title }}</div><div class="h2 mb-0" id="{{ id }}">–</div>
-    {% if with_subtitle %}<div class="text-secondary small" id="{{ id }}-sub"></div>{% endif %}
-  </div></div></div>
+{% macro kpi_card(title, id) %}
+  <div class="card kpi-card"><div class="card-body">
+    <div class="kpi-label">{{ title }}</div>
+    <div class="kpi-value" id="{{ id }}">–</div>
+    <div class="kpi-sub" id="{{ id }}-sub"></div>
+    <div class="kpi-foot">
+      <span class="kpi-delta" id="{{ id }}-delta"></span><span class="kpi-sub"></span>
+    </div>
+    {% if id == "kpi-revenue" %}<div class="kpi-spark" id="kpi-revenue-spark" aria-hidden="true"></div>{% endif %}
+  </div></div>
 {% endmacro %}
 
-{% macro highlight_card(title, value_id, detail_id, background) %}
-  <div class="col-md-5">
-    <div class="card card-sm {{ background }} h-100"><div class="card-body">
-      <div class="subheader">{{ title }}</div>
-      <div class="display-6 fw-bold" id="{{ value_id }}">–</div>
-      <div class="text-secondary" id="{{ detail_id }}"></div>
-    </div></div>
+{% macro highlight_card(title, value_id, detail_id) %}
+  <div class="card stat-card"><div class="card-body">
+    <div class="kpi-label">{{ title }}</div>
+    <div class="stat-value" id="{{ value_id }}">–</div>
+    <div class="kpi-sub" id="{{ detail_id }}"></div>
+  </div></div>
+{% endmacro %}
+
+{% macro panel(title, subtitle="", extra_class="") %}
+  <div class="card panel {{ extra_class }}">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">{{ title }}</h3>
+        {% if subtitle %}<div class="card-subtitle">{{ subtitle }}</div>{% endif %}
+      </div>
+    </div>
+    {{ caller() }}
   </div>
 {% endmacro %}
 
-{% macro detail_card(title) %}
-  <div class="col-md-7">
-    <div class="card card-sm h-100"><div class="card-body">
-      <div class="subheader">{{ title }}</div>
-      {{ caller() }}
-    </div></div>
-  </div>
-{% endmacro %}
-
-{% macro ranking_table(title, body_id, headers, extra_class="") %}
-  <h3 class="card-title mt-4">{{ title }}</h3>
-  <div class="table-responsive">
-    <table class="table table-vcenter card-table {{ extra_class }}">
-      <thead><tr><th class="w-1">#</th>{% for label, css in headers %}<th class="{{ css }}">{{ label }}</th>{% endfor %}</tr></thead>
-      <tbody id="{{ body_id }}"></tbody>
-    </table>
-  </div>
+{% macro ranking_table(title, body_id, headers, subtitle="") %}
+  {% call panel(title, subtitle) %}
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table ranking-table">
+        <thead><tr><th class="w-1">#</th>{% for label, css in headers %}<th class="{{ css }}">{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody id="{{ body_id }}"></tbody>
+      </table>
+    </div>
+  {% endcall %}
 {% endmacro %}

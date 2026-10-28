@@ -10,7 +10,7 @@ import analysis
 import store_service
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash"
 REQUEST_TIMEOUT_SECONDS = 90
 TEMPERATURE = 0.1
 MAX_STEPS = 8

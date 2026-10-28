@@ -1,15 +1,15 @@
 {% import "macros.html" as ui -%}
 {% set tabs = [
-  ("revenue", "currency-dollar", "Revenue"),
+  ("revenue", "chart-area-line", "Revenue"),
   ("customers", "users", "Customers"),
   ("authors", "book", "Authors"),
   ("explorer", "table", "Data explorer"),
 ] -%}
 {% set kpis = [
-  ("Total revenue", "kpi-revenue", False),
-  ("Unique users", "kpi-users", True),
-  ("Unique author sets", "kpi-sets", True),
-  ("Orders", "kpi-orders", True),
+  ("Total revenue", "kpi-revenue"),
+  ("Unique users", "kpi-users"),
+  ("Unique author sets", "kpi-sets"),
+  ("Orders", "kpi-orders"),
 ] -%}
 {% set table_icons = {"books": "book", "users": "users", "orders": "receipt"} -%}
 {% set examples = [
@@ -26,151 +26,240 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bookstore Analytics</title>
+  <script>
+    (() => {
+      let theme = null, mini = null;
+      try { theme = localStorage.getItem("theme"); mini = localStorage.getItem("sidebar-mini"); } catch {}
+      if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-bs-theme", theme);
+      if (mini === "1") document.documentElement.classList.add("sidebar-mini");
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/css/tabler.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
-<div class="page">
-  <header class="navbar navbar-expand-md d-print-none">
-    <div class="container-xl">
-      <a class="navbar-brand pe-3" href="/">{{ ui.icon("chart-infographic", "me-2 text-primary") }}Bookstore Analytics</a>
-      <div class="d-flex flex-wrap gap-2 ms-md-auto" id="store-switch" role="tablist">
-        {% for store in stores %}
-          {% call ui.toggle_button("store", store, loop.first) %}{{ store }}{% endcall %}
+<aside class="navbar navbar-vertical navbar-expand-lg app-sidebar" aria-label="Main navigation">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand app-brand" href="/">
+      <span class="brand-mark">B</span>
+      <span class="brand-text">Bookstore Analytics</span>
+    </a>
+    <div class="collapse navbar-collapse" id="sidebar-menu">
+      <div class="sidebar-section">Views</div>
+      <ul class="navbar-nav" id="main-tabs" role="tablist">
+        {% for tab, tab_icon, label in tabs %}
+          <li class="nav-item">
+            <a class="nav-link {{ 'active' if loop.first }}" data-bs-toggle="tab" href="#tab-{{ tab }}" data-tab="{{ tab }}" title="{{ label }}">
+              <span class="nav-link-icon">{{ ui.icon(tab_icon, "") }}</span>
+              <span class="nav-link-title">{{ label }}</span>
+            </a>
+          </li>
         {% endfor %}
+      </ul>
+      <div class="sidebar-section">Stores</div>
+      <div class="store-list" id="store-switch" role="group" aria-label="Store">
+        {% for store in stores %}
+          {% call ui.toggle_button("store", store, loop.first, "store-btn") %}
+            <span class="store-dot"></span><span class="store-name">{{ store }}</span><span class="store-short">{{ loop.index }}</span>
+          {% endcall %}
+        {% endfor %}
+      </div>
+      <div class="sidebar-foot d-none d-lg-block">
+        <button class="sidebar-collapse-btn" type="button" id="sidebar-toggle" aria-label="Collapse sidebar">
+          {{ ui.icon("layout-sidebar-left-collapse", "") }}<span class="nav-link-title">Collapse</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div class="page">
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="min-w-0">
+        <div class="page-pretitle">Sales overview</div>
+        <h1 class="app-title" id="store-title">{{ stores[0] }}</h1>
+      </div>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <span class="date-chip" id="date-range"></span>
+        <button class="btn btn-icon btn-ghost-secondary" type="button" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <i class="ti ti-moon theme-icon-light" aria-hidden="true"></i><i class="ti ti-sun theme-icon-dark" aria-hidden="true"></i>
+        </button>
       </div>
     </div>
   </header>
 
-  <div class="page-wrapper">
-    <div class="container-xl">
-      <div class="page-header py-3">
-        <div class="row align-items-center">
-          <div class="col">
-            <div class="page-pretitle">Sales overview</div>
-            <h2 class="page-title" id="store-title">{{ stores[0] }}</h2>
-          </div>
-          <div class="col-auto text-secondary small" id="date-range"></div>
+  <main class="app-body">
+    <div class="app-grid">
+      <section class="app-main">
+        <div class="kpi-grid" id="kpis">
+          {% for title, id in kpis %}{{ ui.kpi_card(title, id) }}{% endfor %}
         </div>
-      </div>
-    </div>
 
-    <div class="page-body mt-0">
-      <div class="container-xl">
-        <div class="row g-3">
-          <div class="col-12">
-            <div class="row row-cards g-3" id="kpis">
-              {% for title, id, with_subtitle in kpis %}{{ ui.kpi_card(title, id, with_subtitle) }}{% endfor %}
+        <div class="tab-content">
+          <div class="tab-pane active show" id="tab-revenue" role="tabpanel">
+            <div class="split-grid">
+              <div class="card panel">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Daily revenue, USD</h3>
+                    <div class="card-subtitle">Drag the handles below the chart to zoom</div>
+                  </div>
+                  <button class="btn btn-sm btn-ghost-secondary ms-auto d-none" id="chart-reset">{{ ui.icon("zoom-reset") }}Reset zoom</button>
+                </div>
+                <div class="card-body pt-2">
+                  <div id="revenue-chart" class="revenue-chart"></div>
+                  <div id="revenue-brush" class="revenue-brush"></div>
+                </div>
+              </div>
+              <div class="card panel">
+                <div class="card-header">
+                  <div>
+                    <h3 class="card-title">Top 5 days by revenue</h3>
+                    <div class="card-subtitle">Highest daily totals, USD</div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <ol class="rank-list" id="top-days"></ol>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="col-12 col-xl-8">
-            <div class="card">
-              <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" id="main-tabs" role="tablist">
-                  {% for tab, tab_icon, label in tabs %}
-                    <li class="nav-item"><a class="nav-link {{ 'active' if loop.first }}" data-bs-toggle="tab" href="#tab-{{ tab }}" data-tab="{{ tab }}">{{ ui.icon(tab_icon) }}{{ label }}</a></li>
+          <div class="tab-pane" id="tab-customers" role="tabpanel">
+            <div class="split-grid split-even">
+              {{ ui.highlight_card("Unique users", "cust-unique", "cust-records") }}
+              <div class="card"><div class="card-body">
+                <div class="kpi-label">Best buyer</div>
+                <div class="d-flex align-items-center gap-3 mt-2">
+                  <span class="avatar avatar-md avatar-soft" id="buyer-avatar"></span>
+                  <div class="min-w-0 flex-fill">
+                    <div class="person-name text-truncate" id="buyer-name">–</div>
+                    <div class="kpi-sub text-truncate" id="buyer-emails"></div>
+                  </div>
+                  <div class="text-end">
+                    <div class="metric-value" id="buyer-spent"></div>
+                    <div class="kpi-sub">total spent</div>
+                  </div>
+                </div>
+                <div class="id-block">
+                  <div class="d-flex align-items-center mb-1">
+                    <span class="kpi-sub">User ids · <span id="buyer-aliases"></span></span>
+                    <button class="btn btn-sm btn-ghost-secondary ms-auto copy-btn" type="button" id="buyer-copy">{{ ui.icon("copy") }}<span>Copy</span></button>
+                  </div>
+                  <code class="id-array" id="buyer-ids"></code>
+                </div>
+              </div></div>
+            </div>
+            {{ ui.ranking_table("Top 10 customers by spending", "top-customers",
+                             [("Name(s)", ""), ("User ids", ""), ("Orders", "text-end"), ("Spent", "text-end")],
+                             "People with all their aliases merged") }}
+          </div>
+
+          <div class="tab-pane" id="tab-authors" role="tabpanel">
+            <div class="split-grid split-even">
+              {{ ui.highlight_card("Unique author sets", "auth-sets", "auth-books") }}
+              <div class="card"><div class="card-body">
+                <div class="d-flex align-items-start">
+                  <div class="kpi-label">Most popular author(s)</div>
+                  <div class="text-end ms-auto">
+                    <div class="metric-value" id="auth-top-sold"></div>
+                    <div class="kpi-sub">copies sold</div>
+                  </div>
+                </div>
+                <div class="author-list" id="auth-top">–</div>
+              </div></div>
+            </div>
+            {{ ui.ranking_table("Top 10 author sets", "top-authors",
+                             [("Author set", ""), ("Copies sold", "text-end"), ("", "w-25 d-none d-md-table-cell"), ("Revenue", "text-end")],
+                             "Ranked by total copies sold") }}
+          </div>
+
+          <div class="tab-pane" id="tab-explorer" role="tabpanel">
+            <div class="card panel">
+              <div class="card-header explorer-toolbar">
+                <div class="seg-group" role="group" aria-label="Table" id="table-switch">
+                  {% for table in tables %}
+                    {% call ui.toggle_button("table", table, loop.first) %}{{ ui.icon(table_icons[table]) }}{{ table|capitalize }}{% endcall %}
                   {% endfor %}
-                </ul>
-              </div>
-              <div class="card-body">
-                <div class="tab-content">
-                  <div class="tab-pane active show" id="tab-revenue">
-                    <div class="d-flex align-items-center mb-2">
-                      <h3 class="card-title mb-0">Daily revenue, USD</h3>
-                      <button class="btn btn-sm btn-ghost-secondary ms-auto d-none" id="chart-reset">{{ ui.icon("zoom-reset") }}Reset zoom</button>
-                    </div>
-                    <div id="revenue-chart" class="revenue-chart"></div>
-                    {{ ui.ranking_table("Top 5 days by revenue", "top-days",
-                                     [("Date", ""), ("Revenue", "text-end"), ("", "w-50 d-none d-md-table-cell")], "table-striped") }}
-                  </div>
-
-                  <div class="tab-pane" id="tab-customers">
-                    <div class="row g-3">
-                      {{ ui.highlight_card("Unique users (aliases reconciled)", "cust-unique", "cust-records", "bg-primary-lt") }}
-                      {% call ui.detail_card("Best buyer") %}
-                        <div class="h3 mb-1" id="buyer-name">–</div>
-                        <div class="mb-2"><code class="fs-3" id="buyer-ids"></code></div>
-                        <div class="text-secondary small" id="buyer-emails"></div>
-                        <div class="mt-2"><span class="badge bg-green-lt fs-5" id="buyer-spent"></span></div>
-                      {% endcall %}
-                    </div>
-                    {{ ui.ranking_table("Top 10 customers by spending", "top-customers",
-                                     [("Name(s)", ""), ("User ids", ""), ("Orders", "text-end"), ("Spent", "text-end")]) }}
-                  </div>
-
-                  <div class="tab-pane" id="tab-authors">
-                    <div class="row g-3">
-                      {{ ui.highlight_card("Unique sets of authors", "auth-sets", "auth-books", "bg-azure-lt") }}
-                      {% call ui.detail_card("Most popular author(s) by copies sold") %}
-                        <div class="h3 mb-1" id="auth-top">–</div>
-                        <div class="mt-2"><span class="badge bg-azure-lt fs-5" id="auth-top-sold"></span></div>
-                      {% endcall %}
-                    </div>
-                    {{ ui.ranking_table("Top 10 author sets", "top-authors",
-                                     [("Author set", ""), ("Copies sold", "text-end"), ("Revenue", "text-end")]) }}
-                  </div>
-
-                  <div class="tab-pane" id="tab-explorer">
-                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                      <div class="btn-group" role="group" id="table-switch">
-                        {% for table in tables %}
-                          {% call ui.toggle_button("table", table, loop.first) %}{{ ui.icon(table_icons[table]) }}{{ table|capitalize }}{% endcall %}
-                        {% endfor %}
-                      </div>
-                      <div class="input-icon ms-auto table-search">
-                        <span class="input-icon-addon">{{ ui.icon("search", "") }}</span>
-                        <input type="search" class="form-control form-control-sm" id="table-search" placeholder="Search…">
-                      </div>
-                    </div>
-                    <div id="active-filter" class="alert alert-info py-2 d-none d-flex align-items-center gap-2">
-                      {{ ui.icon("filter", "") }}<span class="flex-fill" id="active-filter-text"></span>
-                      <button class="btn btn-sm btn-outline-info" id="clear-filter">{{ ui.icon("x") }}Clear</button>
-                    </div>
-                    <div class="table-responsive border rounded">
-                      <table class="table table-sm table-vcenter table-hover card-table mb-0" id="data-table">
-                        <thead></thead><tbody></tbody>
-                      </table>
-                    </div>
-                    <div class="d-flex align-items-center mt-2">
-                      <span class="text-secondary small" id="table-info"></span>
-                      <div class="ms-auto btn-group">
-                        <button class="btn btn-sm btn-outline-secondary" id="prev-page">{{ ui.icon("chevron-left", "") }}</button>
-                        <button class="btn btn-sm btn-outline-secondary" id="next-page">{{ ui.icon("chevron-right", "") }}</button>
-                      </div>
-                    </div>
-                  </div>
+                </div>
+                <div class="input-icon table-search ms-auto">
+                  <span class="input-icon-addon">{{ ui.icon("search", "") }}</span>
+                  <input type="search" class="form-control" id="table-search" placeholder="Search rows…" aria-label="Search rows">
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div class="col-12 col-xl-4">
-            <div class="card chat-card">
-              <div class="card-header">
-                <h3 class="card-title">{{ ui.icon("message-chatbot", "me-2 text-primary") }}AI assistant</h3>
-                <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary" id="chat-reset" title="New conversation">{{ ui.icon("refresh", "") }}</button></div>
+              <div class="filter-bar d-none" id="active-filter">
+                <span class="filter-chip">
+                  {{ ui.icon("filter", "") }}<span id="active-filter-text"></span>
+                  <button class="filter-chip-x" type="button" id="clear-filter" aria-label="Remove filter">{{ ui.icon("x", "") }}</button>
+                </span>
               </div>
-              <div class="card-body chat-body" id="chat-log">
-                <div class="text-secondary small mb-2">Ask about the data or give a command, e.g.:</div>
-                <div class="d-flex flex-wrap gap-1" id="chat-examples">
-                  {% for example in examples %}<button class="btn btn-sm btn-outline-secondary">{{ example }}</button>{% endfor %}
+              <div class="table-scroll">
+                <table class="table table-sm table-vcenter table-striped table-hover card-table mb-0" id="data-table">
+                  <thead></thead><tbody></tbody>
+                </table>
+              </div>
+              <div class="card-footer d-flex align-items-center">
+                <span class="text-secondary small" id="table-info"></span>
+                <div class="ms-auto btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" id="prev-page" aria-label="Previous page">{{ ui.icon("chevron-left", "") }}</button>
+                  <button class="btn btn-sm btn-outline-secondary" id="next-page" aria-label="Next page">{{ ui.icon("chevron-right", "") }}</button>
                 </div>
-              </div>
-              <div class="card-footer">
-                <form id="chat-form" class="d-flex gap-2">
-                  <input class="form-control" id="chat-input" placeholder="Ask a question or give a command…" autocomplete="off">
-                  <button class="btn btn-primary" type="submit" id="chat-send">{{ ui.icon("send", "") }}</button>
-                </form>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <aside class="app-chat">
+        <div class="offcanvas-xl offcanvas-bottom chat-offcanvas" tabindex="-1" id="chat-panel" aria-labelledby="chat-title">
+          <div class="offcanvas-body">
+            <div class="card chat-card">
+              <div class="card-header chat-header">
+                <div class="min-w-0">
+                  <h3 class="card-title" id="chat-title">Assistant</h3>
+                  <div class="card-subtitle">Ask questions or control the dashboard</div>
+                </div>
+                <div class="ms-auto d-flex gap-1">
+                  <button class="btn btn-icon btn-sm btn-ghost-secondary" id="chat-reset" title="New conversation" aria-label="New conversation">{{ ui.icon("refresh", "") }}</button>
+                  <button class="btn btn-icon btn-sm btn-ghost-secondary d-xl-none" type="button" data-bs-dismiss="offcanvas" data-bs-target="#chat-panel" aria-label="Close">{{ ui.icon("x", "") }}</button>
+                </div>
+              </div>
+              <div class="card-body chat-body" id="chat-log" aria-live="polite">
+                <div class="chat-intro" id="chat-examples">
+                  <div class="chat-intro-title">Try asking</div>
+                  <div class="chip-row">
+                    {% for example in examples %}<button type="button" class="chat-chip">{{ example }}</button>{% endfor %}
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer chat-footer">
+                <form id="chat-form" class="chat-form">
+                  <textarea class="form-control" id="chat-input" rows="1" placeholder="Ask a question or give a command…" aria-label="Message"></textarea>
+                  <button class="btn btn-primary btn-icon" type="submit" id="chat-send" aria-label="Send">{{ ui.icon("send", "") }}</button>
+                </form>
+                <div class="chat-hint"><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> new line</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
-  </div>
+  </main>
 </div>
+
+<button class="chat-fab d-xl-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#chat-panel" aria-label="Open assistant">
+  {{ ui.icon("message-circle", "") }}<span>Assistant</span>
+</button>
+
 <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/js/tabler.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
 <script>window.STORES = {{ stores|tojson }}; window.TABLES = {{ tables|tojson }};</script>
