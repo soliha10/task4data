@@ -1,0 +1,179 @@
+{% import "macros.html" as ui -%}
+{% set tabs = [
+  ("revenue", "currency-dollar", "Revenue"),
+  ("customers", "users", "Customers"),
+  ("authors", "book", "Authors"),
+  ("explorer", "table", "Data explorer"),
+] -%}
+{% set kpis = [
+  ("Total revenue", "kpi-revenue", False),
+  ("Unique users", "kpi-users", True),
+  ("Unique author sets", "kpi-sets", True),
+  ("Orders", "kpi-orders", True),
+] -%}
+{% set table_icons = {"books": "book", "users": "users", "orders": "receipt"} -%}
+{% set examples = [
+  "How many unique users are in this store?",
+  "What was the revenue in December 2025?",
+  "Which genre sold the most copies?",
+  "Filter out books that have people names in the title",
+  "Show users with e-mails starting with s or p",
+  "Zoom the chart to November 2025",
+] -%}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bookstore Analytics</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<div class="page">
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <a class="navbar-brand pe-3" href="/">{{ ui.icon("chart-infographic", "me-2 text-primary") }}Bookstore Analytics</a>
+      <div class="d-flex flex-wrap gap-2 ms-md-auto" id="store-switch" role="tablist">
+        {% for store in stores %}
+          {% call ui.toggle_button("store", store, loop.first) %}{{ store }}{% endcall %}
+        {% endfor %}
+      </div>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container-xl">
+      <div class="page-header py-3">
+        <div class="row align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Sales overview</div>
+            <h2 class="page-title" id="store-title">{{ stores[0] }}</h2>
+          </div>
+          <div class="col-auto text-secondary small" id="date-range"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-body mt-0">
+      <div class="container-xl">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="row row-cards g-3" id="kpis">
+              {% for title, id, with_subtitle in kpis %}{{ ui.kpi_card(title, id, with_subtitle) }}{% endfor %}
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-8">
+            <div class="card">
+              <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="main-tabs" role="tablist">
+                  {% for tab, tab_icon, label in tabs %}
+                    <li class="nav-item"><a class="nav-link {{ 'active' if loop.first }}" data-bs-toggle="tab" href="#tab-{{ tab }}" data-tab="{{ tab }}">{{ ui.icon(tab_icon) }}{{ label }}</a></li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div class="card-body">
+                <div class="tab-content">
+                  <div class="tab-pane active show" id="tab-revenue">
+                    <div class="d-flex align-items-center mb-2">
+                      <h3 class="card-title mb-0">Daily revenue, USD</h3>
+                      <button class="btn btn-sm btn-ghost-secondary ms-auto d-none" id="chart-reset">{{ ui.icon("zoom-reset") }}Reset zoom</button>
+                    </div>
+                    <div id="revenue-chart" class="revenue-chart"></div>
+                    {{ ui.ranking_table("Top 5 days by revenue", "top-days",
+                                     [("Date", ""), ("Revenue", "text-end"), ("", "w-50 d-none d-md-table-cell")], "table-striped") }}
+                  </div>
+
+                  <div class="tab-pane" id="tab-customers">
+                    <div class="row g-3">
+                      {{ ui.highlight_card("Unique users (aliases reconciled)", "cust-unique", "cust-records", "bg-primary-lt") }}
+                      {% call ui.detail_card("Best buyer") %}
+                        <div class="h3 mb-1" id="buyer-name">–</div>
+                        <div class="mb-2"><code class="fs-3" id="buyer-ids"></code></div>
+                        <div class="text-secondary small" id="buyer-emails"></div>
+                        <div class="mt-2"><span class="badge bg-green-lt fs-5" id="buyer-spent"></span></div>
+                      {% endcall %}
+                    </div>
+                    {{ ui.ranking_table("Top 10 customers by spending", "top-customers",
+                                     [("Name(s)", ""), ("User ids", ""), ("Orders", "text-end"), ("Spent", "text-end")]) }}
+                  </div>
+
+                  <div class="tab-pane" id="tab-authors">
+                    <div class="row g-3">
+                      {{ ui.highlight_card("Unique sets of authors", "auth-sets", "auth-books", "bg-azure-lt") }}
+                      {% call ui.detail_card("Most popular author(s) by copies sold") %}
+                        <div class="h3 mb-1" id="auth-top">–</div>
+                        <div class="mt-2"><span class="badge bg-azure-lt fs-5" id="auth-top-sold"></span></div>
+                      {% endcall %}
+                    </div>
+                    {{ ui.ranking_table("Top 10 author sets", "top-authors",
+                                     [("Author set", ""), ("Copies sold", "text-end"), ("Revenue", "text-end")]) }}
+                  </div>
+
+                  <div class="tab-pane" id="tab-explorer">
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                      <div class="btn-group" role="group" id="table-switch">
+                        {% for table in tables %}
+                          {% call ui.toggle_button("table", table, loop.first) %}{{ ui.icon(table_icons[table]) }}{{ table|capitalize }}{% endcall %}
+                        {% endfor %}
+                      </div>
+                      <div class="input-icon ms-auto table-search">
+                        <span class="input-icon-addon">{{ ui.icon("search", "") }}</span>
+                        <input type="search" class="form-control form-control-sm" id="table-search" placeholder="Search…">
+                      </div>
+                    </div>
+                    <div id="active-filter" class="alert alert-info py-2 d-none d-flex align-items-center gap-2">
+                      {{ ui.icon("filter", "") }}<span class="flex-fill" id="active-filter-text"></span>
+                      <button class="btn btn-sm btn-outline-info" id="clear-filter">{{ ui.icon("x") }}Clear</button>
+                    </div>
+                    <div class="table-responsive border rounded">
+                      <table class="table table-sm table-vcenter table-hover card-table mb-0" id="data-table">
+                        <thead></thead><tbody></tbody>
+                      </table>
+                    </div>
+                    <div class="d-flex align-items-center mt-2">
+                      <span class="text-secondary small" id="table-info"></span>
+                      <div class="ms-auto btn-group">
+                        <button class="btn btn-sm btn-outline-secondary" id="prev-page">{{ ui.icon("chevron-left", "") }}</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="next-page">{{ ui.icon("chevron-right", "") }}</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-4">
+            <div class="card chat-card">
+              <div class="card-header">
+                <h3 class="card-title">{{ ui.icon("message-chatbot", "me-2 text-primary") }}AI assistant</h3>
+                <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary" id="chat-reset" title="New conversation">{{ ui.icon("refresh", "") }}</button></div>
+              </div>
+              <div class="card-body chat-body" id="chat-log">
+                <div class="text-secondary small mb-2">Ask about the data or give a command, e.g.:</div>
+                <div class="d-flex flex-wrap gap-1" id="chat-examples">
+                  {% for example in examples %}<button class="btn btn-sm btn-outline-secondary">{{ example }}</button>{% endfor %}
+                </div>
+              </div>
+              <div class="card-footer">
+                <form id="chat-form" class="d-flex gap-2">
+                  <input class="form-control" id="chat-input" placeholder="Ask a question or give a command…" autocomplete="off">
+                  <button class="btn btn-primary" type="submit" id="chat-send">{{ ui.icon("send", "") }}</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0/dist/js/tabler.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+<script>window.STORES = {{ stores|tojson }}; window.TABLES = {{ tables|tojson }};</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

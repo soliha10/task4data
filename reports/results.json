@@ -1,0 +1,107 @@
+{
+  "STORE1": {
+    "top_5_days": [
+      "2025-08-20",
+      "2025-09-22",
+      "2026-01-15",
+      "2025-09-03",
+      "2025-10-17"
+    ],
+    "unique_users": 3221,
+    "unique_author_sets": 324,
+    "most_popular_author": [
+      [
+        "Darron Ernser",
+        "Miss Lorina Kertzmann"
+      ]
+    ],
+    "best_buyer": [
+      48403,
+      48904,
+      50056
+    ]
+  },
+  "STORE2": {
+    "top_5_days": [
+      "2025-11-16",
+      "2025-12-12",
+      "2025-12-10",
+      "2025-09-19",
+      "2025-11-19"
+    ],
+    "unique_users": 3166,
+    "unique_author_sets": 281,
+    "most_popular_author": [
+      [
+        "Kenneth Hamill",
+        "Marcus McKenzie"
+      ]
+    ],
+    "best_buyer": [
+      51014
+    ]
+  },
+  "STORE3": {
+    "top_5_days": [
+      "2025-10-09",
+      "2025-09-21",
+      "2025-09-04",
+      "2025-09-30",
+      "2025-09-01"
+    ],
+    "unique_users": 2955,
+    "unique_author_sets": 307,
+    "most_popular_author": [
+      [
+        "Loreta Metz"
+      ]
+    ],
+    "best_buyer": [
+      52881,
+      53869,
+      54846
+    ]
+  },
+  "STORE4": {
+    "top_5_days": [
+      "2025-11-24",
+      "2025-11-17",
+      "2025-11-28",
+      "2025-11-13",
+      "2025-09-21"
+    ],
+    "unique_users": 2850,
+    "unique_author_sets": 299,
+    "most_popular_author": [
+      [
+        "Emil Rempel",
+        "Heriberto Kutch",
+        "Merle Rice"
+      ]
+    ],
+    "best_buyer": [
+      53347,
+      54809
+    ]
+  },
+  "STORE5": {
+    "top_5_days": [
+      "2025-10-20",
+      "2025-11-28",
+      "2025-09-27",
+      "2025-10-17",
+      "2025-12-05"
+    ],
+    "unique_users": 2987,
+    "unique_author_sets": 311,
+    "most_popular_author": [
+      [
+        "Dulcie Bode"
+      ]
+    ],
+    "best_buyer": [
+      52895,
+      53969
+    ]
+  }
+}
